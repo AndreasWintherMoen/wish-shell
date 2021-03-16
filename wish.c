@@ -107,7 +107,8 @@ void printWords(struct Commands words) {
 void executeCommand(struct Commands input) {
   int pid = fork();
   if (pid == 0) {
-    execvp(input.commands[0], input.commands);
+    int error = execvp(input.commands[0], input.commands);
+    printf("Could not execute command. Error: %d\n", error);
   }
   int *foo;
   wait(foo);
