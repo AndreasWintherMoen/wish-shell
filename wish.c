@@ -81,26 +81,10 @@ void printWords(char **words) {
   }
 }
 
-char *removeNewline(char *string) {
-  while (*string == '\n') string++;
-  return string;
-}
-
 void executeCommand(char **input) {
   int pid = fork();
   if (pid == 0) {
-    // printf("%s", input[1]);
-    // printf("%s", input[1]);
-    // printWords(input);
-    // printf("%s\n", input[0]);
-    // execl(input[0], input, NULL);
-    // execl("/bin/mv", "mv", "test", "folder", NULL);
-    printf("%c", input[0][3]);
-    char filename[20] = "/bin/";
-    strcat(filename, removeNewline(input[0]));
-    printf("%s", filename);
-    // execl("/bin/ls", "ls", NULL);
-    execl(filename, removeNewline(input[0]), NULL);
+    execlp(input[0], input[0], NULL);
   }
   int *foo;
   wait(foo);
