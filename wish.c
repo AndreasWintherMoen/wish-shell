@@ -9,8 +9,8 @@
 #include <fcntl.h>
 
 struct Tokens {
-  char **commands;
-  int numCommands;
+  char **tokens;
+  int numTokens;
 };
 
 char** createArray(int m, int n) {
@@ -76,33 +76,33 @@ int count(const char string[], const char symbols[]) {
 // Splits a string into a list of strings
 struct Tokens split(const char string[], const char delimit[]) {
   int numWords = count(string, delimit) + 1; // 1 + number of delimiters
-  char **commands = createArray(numWords, 10);
+  char **tokens = createArray(numWords, 10);
   int j = 0;
   int count = 0;
   for (int i = 0; i < strlen(string); i++) {
     // if delimiter, append \0 to finish word, and then start a new word
     if(contains(delimit, string[i])) {
-      commands[count][j]='\0';
+      tokens[count][j]='\0';
       count++;
       j=0;
     }
     // else just add the char to the current word
     else
     {
-      commands[count][j]=string[i];
+      tokens[count][j]=string[i];
       j++;
     }
   }
   struct Tokens output;
-  output.commands = commands;
-  output.numCommands = numWords;
+  output.tokens = tokens;
+  output.numTokens = numWords;
   return output;
 }
 
 void printWords(struct Tokens words) {
-  printf("%s", words.commands[0]);
-  for (int i = 1; i < words.numCommands; i++) { 
-    printf(", %s", words.commands[i]);
+  printf("%s", words.tokens[0]);
+  for (int i = 1; i < words.numTokens; i++) { 
+    printf(", %s", words.tokens[i]);
   }
   printf("\n");
 }
@@ -116,8 +116,8 @@ int isInputRedirection(char *str) {
 }
 
 int findOutputRedirection(struct Tokens input) {
-  for (int i = 0; i < input.numCommands; i++) {
-    if (isOutputRedirection(input.commands[i])) {
+  for (int i = 0; i < input.numTokens; i++) {
+    if (isOutputRedirection(input.tokens[i])) {
       return i;
     }
   }
@@ -125,8 +125,8 @@ int findOutputRedirection(struct Tokens input) {
 }
 
 int findInputRedirection(struct Tokens input) {
-  for (int i = 0; i < input.numCommands; i++) {
-    if (isInputRedirection(input.commands[i])) {
+  for (int i = 0; i < input.numTokens; i++) {
+    if (isInputRedirection(input.tokens[i])) {
       return i;
     }
   }
@@ -155,12 +155,12 @@ void doIORedirection(struct Tokens input) {
   int outputSignIndex = findOutputRedirection(input);
   int inputSignIndex = findInputRedirection(input);
   if (outputSignIndex >= 0) {
-    redirectOutputToFile(input.commands[outputSignIndex + 1]); // the token after the > sign is the name of the file
-    input.commands[outputSignIndex] = NULL; // set > to NULL so that exec will exclude output redirection
+    redirectOutputToFile(input.tokens[outputSignIndex + 1]); // the token after the > sign is the name of the file
+    input.tokens[outputSignIndex] = NULL; // set > to NULL so that exec will exclude output redirection
   }
   if (inputSignIndex >= 0) {
-    redirectInputToFile(input.commands[inputSignIndex + 1]); // the token after the < sign is the name of the file
-    input.commands[inputSignIndex] = NULL; // set < to NULL so that exec will exclude input redirection
+    redirectInputToFile(input.tokens[inputSignIndex + 1]); // the token after the < sign is the name of the file
+    input.tokens[inputSignIndex] = NULL; // set < to NULL so that exec will exclude input redirection
   }
 }
 
@@ -173,7 +173,7 @@ void executeCommand(struct Tokens input) {
   }
   else if (pid == 0) {
     doIORedirection(input);
-    execvp(input.commands[0], input.commands);
+    execvp(input.tokens[0], input.tokens);
     perror("execvp");
     _exit(1);
   }
@@ -188,7 +188,7 @@ void main(int argc, char **argv) {
     printf("> ");
     fgets(input, sizeof(input), stdin);
     trimwhitespace(input);
-    struct Tokens commands = split(input, delimiter);
-    executeCommand(commands);
+    struct Tokens tokens = split(input, delimiter);
+    executeCommand(tokens);
   }
 }
