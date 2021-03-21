@@ -134,7 +134,7 @@ int findInputRedirection(struct Tokens input) {
 }
 
 void redirectOutputToFile(char *filename) {
-  int fd = creat(filename, 0644);
+  int fd = open(filename, O_CREAT | O_RDWR | O_APPEND, 0644);
   if (fd < 0) {
     printf("Could not open file %s. Error %d", filename, fd);
   }
