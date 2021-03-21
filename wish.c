@@ -204,14 +204,25 @@ void executeCommand(struct Tokens input) {
   wait(status);
 }
 
-void main(int argc, char **argv) {
+void loop(FILE *__restrict__ inputStream, int isInfiniteLoop, char *userPrompt) {
   const char delimiter[] = " \t";
   char input[256];
-  while (1) {
-    printf("> ");
-    fgets(input, sizeof(input), stdin);
+  while (isInfiniteLoop || (!feof(inputStream))) {
+    printf("%s", userPrompt);
+    fgets(input, sizeof(input), inputStream);
     trimwhitespace(input);
     struct Tokens tokens = split(input, delimiter);
     executeCommand(tokens);
+  }
+}
+
+void main(int argc, char **argv) {
+  if (argc > 1) {
+    char *filename = argv[1];
+    FILE *fPointer = fopen(filename, "r");
+    loop(fPointer, 0, "");
+  }
+  else {
+    loop(stdin, 1, "> ");
   }
 }
