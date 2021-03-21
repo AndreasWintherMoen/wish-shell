@@ -165,7 +165,6 @@ void doIORedirection(struct Tokens input) {
 }
 
 void executeCommand(struct Tokens input) {
-  fflush(0); // reset IO channels to default values (stdin, stdout and stderr)
   int pid = fork();
   if (pid < 0) {
     printf("Error creating forked process. Error code %d\n", pid);
