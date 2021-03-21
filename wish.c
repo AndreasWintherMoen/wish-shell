@@ -107,36 +107,72 @@ void printWords(struct Tokens words) {
   printf("\n");
 }
 
+int isOutputRedirection(char *str) {
+  return stringsAreEqual(str, ">");
+}
+
+int isInputRedirection(char *str) {
+  return stringsAreEqual(str, "<");
+}
+
+int findOutputRedirection(struct Tokens input) {
+  for (int i = 0; i < input.numCommands; i++) {
+    if (isOutputRedirection(input.commands[i])) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+int findInputRedirection(struct Tokens input) {
+  for (int i = 0; i < input.numCommands; i++) {
+    if (isInputRedirection(input.commands[i])) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+void redirectOutputToFile(char *filename) {
+  int fd = creat(filename, 0644);
+  if (fd < 0) {
+    printf("Could not open file %s. Error %d", filename, fd);
+  }
+  dup2(fd, STDOUT_FILENO);
+  close(fd);
+}
+
+void redirectInputToFile(char *filename) {
+  int fd = open(filename, O_RDONLY);
+  if (fd < 0) {
+    printf("Could not open file %s. Error %d", filename, fd);
+  }
+  dup2(fd, STDIN_FILENO);
+  close(fd);
+}
+
+void doIORedirection(struct Tokens *input) {
+  int outputSignIndex = findOutputRedirection(*input);
+  int inputSignIndex = findInputRedirection(*input);
+  if (outputSignIndex >= 0) {
+    redirectOutputToFile((*input).commands[outputSignIndex + 1]); // the token after the > sign is the name of the file
+    (*input).commands[outputSignIndex] = NULL; // set > to NULL so that exec will exclude output redirection
+  }
+  if (inputSignIndex >= 0) {
+    redirectInputToFile((*input).commands[inputSignIndex + 1]); // the token after the < sign is the name of the file
+    (*input).commands[inputSignIndex] = NULL; // set < to NULL so that exec will exclude input redirection
+  }
+}
+
 void executeCommand(struct Tokens input) {
-  fflush(0);
+  fflush(0); // reset IO channels to default values (stdin, stdout and stderr)
   int pid = fork();
   if (pid < 0) {
     printf("Error creating forked process. Error code %d\n", pid);
     exit(1);
   }
   else if (pid == 0) {
-    int outputSignIndex = findOutputRedirection(input);
-    int inputSignIndex = findInputRedirection(input);
-    if (outputSignIndex >= 0) {
-      char *filename = input.commands[outputSignIndex + 1];
-      int fd = creat(filename, 0644);
-      if (fd < 0) {
-        printf("Could not open file %s. Error %d", filename, fd);
-      }
-      dup2(fd, STDOUT_FILENO);
-      close(fd);
-      input.commands[outputSignIndex] = NULL; // set > to NULL so that exec will exclude output redirection
-    }
-    if (inputSignIndex >= 0) {
-      char *filename = input.commands[inputSignIndex + 1];
-      int fd = open(filename, O_RDONLY);
-      if (fd < 0) {
-        printf("Could not open file %s. Error %d", filename, fd);
-      }
-      dup2(fd, STDIN_FILENO);
-      close(fd);
-      input.commands[inputSignIndex] = NULL; // set < to NULL so that exec will exclude input redirection
-    } 
+    doIORedirection(&input);
     execvp(input.commands[0], input.commands);
     perror("execvp");
     _exit(1);
