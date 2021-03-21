@@ -4,8 +4,11 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <ctype.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
-struct Commands {
+struct Tokens {
   char **commands;
   int numCommands;
 };
@@ -71,7 +74,7 @@ int count(const char string[], const char symbols[]) {
 }
 
 // Splits a string into a list of strings
-struct Commands split(const char string[], const char delimit[]) {
+struct Tokens split(const char string[], const char delimit[]) {
   int numWords = count(string, delimit) + 1; // 1 + number of delimiters
   char **commands = createArray(numWords, 10);
   int j = 0;
@@ -90,13 +93,13 @@ struct Commands split(const char string[], const char delimit[]) {
       j++;
     }
   }
-  struct Commands output;
+  struct Tokens output;
   output.commands = commands;
   output.numCommands = numWords;
   return output;
 }
 
-void printWords(struct Commands words) {
+void printWords(struct Tokens words) {
   printf("%s", words.commands[0]);
   for (int i = 1; i < words.numCommands; i++) { 
     printf(", %s", words.commands[i]);
@@ -104,14 +107,42 @@ void printWords(struct Commands words) {
   printf("\n");
 }
 
-void executeCommand(struct Commands input) {
+void executeCommand(struct Tokens input) {
+  fflush(0);
   int pid = fork();
-  if (pid == 0) {
-    int error = execvp(input.commands[0], input.commands);
-    printf("Could not execute command. Error: %d\n", error);
+  if (pid < 0) {
+    printf("Error creating forked process. Error code %d\n", pid);
+    exit(1);
   }
-  int *foo;
-  wait(foo);
+  else if (pid == 0) {
+    int outputSignIndex = findOutputRedirection(input);
+    int inputSignIndex = findInputRedirection(input);
+    if (outputSignIndex >= 0) {
+      char *filename = input.commands[outputSignIndex + 1];
+      int fd = creat(filename, 0644);
+      if (fd < 0) {
+        printf("Could not open file %s. Error %d", filename, fd);
+      }
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
+      input.commands[outputSignIndex] = NULL; // set > to NULL so that exec will exclude output redirection
+    }
+    if (inputSignIndex >= 0) {
+      char *filename = input.commands[inputSignIndex + 1];
+      int fd = open(filename, O_RDONLY);
+      if (fd < 0) {
+        printf("Could not open file %s. Error %d", filename, fd);
+      }
+      dup2(fd, STDIN_FILENO);
+      close(fd);
+      input.commands[inputSignIndex] = NULL; // set < to NULL so that exec will exclude input redirection
+    } 
+    execvp(input.commands[0], input.commands);
+    perror("execvp");
+    _exit(1);
+  }
+  int *status;
+  wait(status);
 }
 
 void main(int argc, char **argv) {
@@ -121,8 +152,7 @@ void main(int argc, char **argv) {
     printf("> ");
     fgets(input, sizeof(input), stdin);
     trimwhitespace(input);
-    struct Commands commands = split(input, delimiter);
+    struct Tokens commands = split(input, delimiter);
     executeCommand(commands);
-    destroyArray(commands.commands);
   }
 }
