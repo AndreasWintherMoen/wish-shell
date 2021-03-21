@@ -151,16 +151,16 @@ void redirectInputToFile(char *filename) {
   close(fd);
 }
 
-void doIORedirection(struct Tokens *input) {
-  int outputSignIndex = findOutputRedirection(*input);
-  int inputSignIndex = findInputRedirection(*input);
+void doIORedirection(struct Tokens input) {
+  int outputSignIndex = findOutputRedirection(input);
+  int inputSignIndex = findInputRedirection(input);
   if (outputSignIndex >= 0) {
-    redirectOutputToFile((*input).commands[outputSignIndex + 1]); // the token after the > sign is the name of the file
-    (*input).commands[outputSignIndex] = NULL; // set > to NULL so that exec will exclude output redirection
+    redirectOutputToFile(input.commands[outputSignIndex + 1]); // the token after the > sign is the name of the file
+    input.commands[outputSignIndex] = NULL; // set > to NULL so that exec will exclude output redirection
   }
   if (inputSignIndex >= 0) {
-    redirectInputToFile((*input).commands[inputSignIndex + 1]); // the token after the < sign is the name of the file
-    (*input).commands[inputSignIndex] = NULL; // set < to NULL so that exec will exclude input redirection
+    redirectInputToFile(input.commands[inputSignIndex + 1]); // the token after the < sign is the name of the file
+    input.commands[inputSignIndex] = NULL; // set < to NULL so that exec will exclude input redirection
   }
 }
 
@@ -172,7 +172,7 @@ void executeCommand(struct Tokens input) {
     exit(1);
   }
   else if (pid == 0) {
-    doIORedirection(&input);
+    doIORedirection(input);
     execvp(input.commands[0], input.commands);
     perror("execvp");
     _exit(1);
