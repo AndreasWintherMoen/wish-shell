@@ -164,17 +164,41 @@ void doIORedirection(struct Tokens input) {
   }
 }
 
+int hasExitCommand(struct Tokens input) {
+  return (stringsAreEqual(input.tokens[0], "exit"));
+}
+
+int hasCdCommand(struct Tokens input) {
+  return (stringsAreEqual(input.tokens[0], "cd"));
+}
+
+int hasInternalShellCommand(struct Tokens input) {
+  return hasExitCommand(input) || hasCdCommand(input);
+}
+
 void executeCommand(struct Tokens input) {
   int pid = fork();
   if (pid < 0) {
     printf("Error creating forked process. Error code %d\n", pid);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
-  else if (pid == 0) {
+  else if (pid == 0) { // if child process
+    if (hasInternalShellCommand(input)) {
+      // if we have an internal shell command such as exit or cd, the commands must be executed on the parent.
+      // this child process should just terminate
+      exit(EXIT_SUCCESS);
+    }
     doIORedirection(input);
     execvp(input.tokens[0], input.tokens);
     perror("execvp");
-    _exit(1);
+    _exit(EXIT_FAILURE);
+  } else { // if parent process
+    if (hasExitCommand(input)) {
+      exit(EXIT_SUCCESS);
+    }
+    else if (hasCdCommand(input)) {
+      chdir(input.tokens[1]);
+    }
   }
   int *status;
   wait(status);
